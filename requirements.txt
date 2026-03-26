@@ -1,0 +1,15 @@
+lightgbm>=4.0
+mapie>=0.8
+shap>=0.44
+mlflow>=2.10
+sentence-transformers>=2.6
+prophet>=1.1
+streamlit>=1.32
+plotly>=5.18
+pandas>=2.0
+numpy>=1.26
+scikit-learn>=1.4
+pyarrow>=15.0
+kaggle>=1.6
+rich>=13.7
+pydantic>=2.7
