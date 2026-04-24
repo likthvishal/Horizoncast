@@ -1,0 +1,30 @@
+"""SaaS Deployment Configuration for Vercel."""
+
+# This file should be placed at the repository root
+
+{
+  "buildCommand": "npm install --prefix frontend && npm run build --prefix frontend",
+  "env": {
+    "NEXT_PUBLIC_API_URL": {
+      "description": "Backend API URL",
+      "required": true,
+      "placeholder": "http://localhost:8000"
+    },
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": {
+      "description": "Clerk publishable key",
+      "required": true
+    },
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string",
+      "required": true
+    }
+  },
+  "regions": ["iad1"],
+  "functions": {
+    "backend/main.py": {
+      "runtime": "python3.11",
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}
