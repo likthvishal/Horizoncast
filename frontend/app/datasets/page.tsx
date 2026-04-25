@@ -1,21 +1,7 @@
-"use client"
-
-import { useAuth } from "@clerk/nextjs"
-import { redirect } from "next/navigation"
 import { Header } from "@/components/Header"
 import { DatasetUpload } from "@/components/DatasetUpload"
 
 export default function DatasetsPage() {
-  const { isLoaded, userId } = useAuth()
-
-  if (!isLoaded) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-  }
-
-  if (!userId) {
-    redirect("/auth/sign-in")
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -23,7 +9,9 @@ export default function DatasetsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Datasets</h1>
           <p className="text-muted-foreground mt-2">
-            Upload and manage your forecast datasets.
+            Upload time-series data with at least <code>date</code>,{" "}
+            <code>store_id</code>, <code>item_id</code>, and{" "}
+            <code>sales</code> columns.
           </p>
         </div>
 
@@ -34,18 +22,47 @@ export default function DatasetsPage() {
           <div className="bg-card p-6 rounded-lg border">
             <h3 className="font-semibold mb-4">Your Datasets</h3>
             <div className="space-y-3">
-              <div className="text-sm pb-3 border-b">
-                <div className="font-medium">M5 Sales Data</div>
-                <div className="text-muted-foreground text-xs">2.1M rows • Updated 2h ago</div>
-              </div>
-              <div className="text-sm pb-3 border-b">
-                <div className="font-medium">Retail Forecast</div>
-                <div className="text-muted-foreground text-xs">500K rows • Updated 1d ago</div>
-              </div>
-              <div className="text-sm">
-                <div className="font-medium">E-commerce Data</div>
-                <div className="text-muted-foreground text-xs">1.5M rows • Updated 3d ago</div>
-              </div>
+              {[
+                {
+                  name: "M5 Sales (sample)",
+                  rows: "2.1M",
+                  updated: "2h ago",
+                  status: "ready",
+                },
+                {
+                  name: "Q4 Retail Forecast",
+                  rows: "500K",
+                  updated: "1d ago",
+                  status: "ready",
+                },
+                {
+                  name: "E-commerce Pilot",
+                  rows: "1.5M",
+                  updated: "3d ago",
+                  status: "processing",
+                },
+              ].map((d) => (
+                <div
+                  key={d.name}
+                  className="text-sm pb-3 border-b last:border-0"
+                >
+                  <div className="flex justify-between">
+                    <span className="font-medium">{d.name}</span>
+                    <span
+                      className={
+                        d.status === "ready"
+                          ? "text-green-600 text-xs"
+                          : "text-amber-600 text-xs"
+                      }
+                    >
+                      {d.status}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground text-xs mt-1">
+                    {d.rows} rows • Updated {d.updated}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

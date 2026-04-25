@@ -1,165 +1,168 @@
 "use client"
 
 import { useState } from "react"
-import { Upload, AlertCircle, CheckCircle } from "lucide-react"
+import { Upload, AlertCircle, CheckCircle, FileText } from "lucide-react"
 
-interface FileUploadState {
-  isDragging: boolean
-  file: File | null
-  preview: { rows: any[]; columns: string[] } | null
-  isLoading: boolean
-  error: string | null
-  success: boolean
+interface PreviewState {
+  rows: Record<string, string>[]
+  columns: string[]
 }
 
 export const DatasetUpload = () => {
-  const [state, setState] = useState<FileUploadState>({
-    isDragging: false,
-    file: null,
-    preview: null,
-    isLoading: false,
-    error: null,
-    success: false,
-  })
+  const [isDragging, setIsDragging] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<PreviewState | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
-  const handleFileSelect = async (file: File) => {
-    // Validate file type
-    if (!file.name.endsWith(".csv") && !file.name.endsWith(".parquet")) {
-      setState((s) => ({
-        ...s,
-        error: "Only CSV and Parquet files are supported",
-      }))
+  const handleFileSelect = async (selectedFile: File) => {
+    setError(null)
+    setSuccess(false)
+
+    if (!selectedFile.name.endsWith(".csv") && !selectedFile.name.endsWith(".parquet")) {
+      setError("Only CSV and Parquet files are supported")
+      return
+    }
+    if (selectedFile.size > 500 * 1024 * 1024) {
+      setError("File size exceeds 500MB limit")
       return
     }
 
-    // Validate file size (max 500MB)
-    if (file.size > 500 * 1024 * 1024) {
-      setState((s) => ({
-        ...s,
-        error: "File size exceeds 500MB limit",
-      }))
-      return
-    }
-
-    setState((s) => ({ ...s, file, isLoading: true, error: null }))
+    setFile(selectedFile)
+    setIsLoading(true)
 
     try {
-      // Read and preview file
-      const text = await file.text()
-      const lines = text.split("\n")
-      const headers = lines[0].split(",")
-      const previewRows = lines.slice(1, 6).map((line) => {
-        const values = line.split(",")
-        return Object.fromEntries(headers.map((h, i) => [h.trim(), values[i]?.trim()]))
-      })
-
-      setState((s) => ({
-        ...s,
-        preview: { rows: previewRows, columns: headers.map((h) => h.trim()) },
-        isLoading: false,
-      }))
+      if (selectedFile.name.endsWith(".csv")) {
+        const text = await selectedFile.slice(0, 64 * 1024).text()
+        const lines = text.split("\n").filter((l) => l.trim().length > 0)
+        if (lines.length === 0) {
+          throw new Error("File is empty")
+        }
+        const headers = lines[0].split(",").map((h) => h.trim())
+        const previewRows = lines.slice(1, 6).map((line) => {
+          const values = line.split(",")
+          return Object.fromEntries(
+            headers.map((h, i) => [h, (values[i] ?? "").trim()])
+          )
+        })
+        setPreview({ rows: previewRows, columns: headers })
+      } else {
+        setPreview(null)
+      }
     } catch (err) {
-      setState((s) => ({
-        ...s,
-        error: `Failed to read file: ${err instanceof Error ? err.message : "Unknown error"}`,
-        isLoading: false,
-      }))
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setState((s) => ({ ...s, isDragging: false }))
-    if (e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0])
+      setError(err instanceof Error ? err.message : "Failed to read file")
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleUpload = async () => {
-    if (!state.file) return
-
-    setState((s) => ({ ...s, isLoading: true }))
-
+    if (!file) return
+    setIsLoading(true)
     try {
-      // TODO: Upload to backend
-      setState((s) => ({
-        ...s,
-        success: true,
-        isLoading: false,
-      }))
-
-      setTimeout(() => {
-        setState((s) => ({ ...s, file: null, preview: null, success: false }))
-      }, 3000)
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("http://localhost:8000/api/upload/csv", {
+        method: "POST",
+        headers: { Authorization: "Bearer demo-key-12345" },
+        body: formData,
+      })
+      if (!res.ok) {
+        throw new Error(`Upload failed: ${res.status}`)
+      }
+      setSuccess(true)
     } catch (err) {
-      setState((s) => ({
-        ...s,
-        error: `Upload failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-        isLoading: false,
-      }))
+      setError(
+        err instanceof Error
+          ? `${err.message}. Make sure the backend is running on :8000.`
+          : "Upload failed"
+      )
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  const reset = () => {
+    setFile(null)
+    setPreview(null)
+    setError(null)
+    setSuccess(false)
   }
 
   return (
     <div className="bg-card p-8 rounded-lg border">
       <h3 className="font-semibold mb-4">Upload Dataset</h3>
 
-      {!state.file ? (
-        <div
-          className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-            state.isDragging ? "border-primary bg-primary/5" : "border-muted"
+      {!file ? (
+        <label
+          className={`block border-2 border-dashed rounded-lg p-12 text-center transition cursor-pointer ${
+            isDragging
+              ? "border-primary bg-primary/5"
+              : "border-muted hover:border-primary/50"
           }`}
-          onDragEnter={() => setState((s) => ({ ...s, isDragging: true }))}
-          onDragLeave={() => setState((s) => ({ ...s, isDragging: false }))}
-          onDrop={handleDrop}
+          onDragEnter={(e) => {
+            e.preventDefault()
+            setIsDragging(true)
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setIsDragging(false)
+            const f = e.dataTransfer.files[0]
+            if (f) handleFileSelect(f)
+          }}
         >
-          <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-sm font-medium">Drag and drop your CSV or Parquet file</p>
-          <p className="text-xs text-muted-foreground mt-1">Max 500MB</p>
-          <label className="block mt-4">
-            <input
-              type="file"
-              accept=".csv,.parquet"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-            />
-            <button
-              type="button"
-              onClick={() => document.querySelector('input[type="file"]')?.click()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
-            >
-              Choose File
-            </button>
-          </label>
-        </div>
+          <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-4" />
+          <p className="text-sm font-medium">Drag and drop a CSV or Parquet file</p>
+          <p className="text-xs text-muted-foreground mt-1">or click to browse — max 500MB</p>
+          <input
+            type="file"
+            accept=".csv,.parquet"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleFileSelect(f)
+            }}
+          />
+        </label>
       ) : (
         <>
-          <div className="mb-4 p-4 bg-muted rounded-lg">
-            <p className="text-sm font-medium">{state.file.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {(state.file.size / 1024 / 1024).toFixed(2)} MB
-            </p>
+          <div className="mb-4 p-4 bg-muted rounded-lg flex items-center gap-3">
+            <FileText className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">{file.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {(file.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
           </div>
 
-          {state.preview && (
+          {preview && (
             <div className="mb-4">
-              <p className="text-sm font-medium mb-2">Preview ({state.preview.columns.length} columns)</p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      {state.preview.columns.map((col) => (
-                        <th key={col} className="text-left p-2 text-muted-foreground">
+              <p className="text-sm font-medium mb-2">
+                Preview ({preview.columns.length} columns)
+              </p>
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {preview.columns.map((col) => (
+                        <th
+                          key={col}
+                          className="text-left p-2 font-medium border-b"
+                        >
                           {col}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {state.preview.rows.map((row, i) => (
-                      <tr key={i} className="border-b">
-                        {state.preview!.columns.map((col) => (
-                          <td key={col} className="p-2">
+                    {preview.rows.map((row, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        {preview.columns.map((col) => (
+                          <td key={col} className="p-2 font-mono">
                             {row[col]}
                           </td>
                         ))}
@@ -174,14 +177,14 @@ export const DatasetUpload = () => {
           <div className="flex gap-2">
             <button
               onClick={handleUpload}
-              disabled={state.isLoading || state.success}
+              disabled={isLoading || success}
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
             >
-              {state.isLoading ? "Uploading..." : state.success ? "✓ Uploaded" : "Upload"}
+              {isLoading ? "Uploading..." : success ? "Uploaded ✓" : "Upload to Backend"}
             </button>
             <button
-              onClick={() => setState((s) => ({ ...s, file: null, preview: null }))}
-              className="px-4 py-2 bg-muted text-foreground rounded-lg hover:opacity-80"
+              onClick={reset}
+              className="px-4 py-2 border rounded-lg hover:bg-muted"
             >
               Cancel
             </button>
@@ -189,14 +192,14 @@ export const DatasetUpload = () => {
         </>
       )}
 
-      {state.error && (
+      {error && (
         <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex gap-2 items-start">
           <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-red-700">{state.error}</p>
+          <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
 
-      {state.success && (
+      {success && (
         <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex gap-2 items-start">
           <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-green-700">Dataset uploaded successfully!</p>

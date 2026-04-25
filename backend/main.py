@@ -1,10 +1,11 @@
-"""HorizonCast FastAPI backend application."""
+"""HorizonCast FastAPI backend application (demo-ready)."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api_datasets import router as datasets_router
 from backend.api_forecast import router as forecast_router
+from backend.api_upload import router as upload_router
 
 app = FastAPI(
     title="HorizonCast API",
@@ -16,7 +17,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,16 +28,17 @@ app.add_middleware(
 
 app.include_router(datasets_router)
 app.include_router(forecast_router)
+app.include_router(upload_router)
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "healthy"}
 
 
 @app.get("/")
-def root():
+def root() -> dict[str, str]:
     """Root endpoint."""
     return {
         "service": "HorizonCast API",
@@ -44,4 +49,5 @@ def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)

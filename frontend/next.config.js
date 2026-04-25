@@ -1,7 +1,7 @@
-import type { Config } from "next"
-
-const config: Config = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
   pageExtensions: ["ts", "tsx", "js", "jsx"],
 }
 
-export default config
+module.exports = nextConfig
