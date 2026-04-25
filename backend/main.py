@@ -15,12 +15,23 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+import os
+import re
+
+_default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://frontend-one-mauve-19.vercel.app",
+]
+
+_extra = os.getenv("CORS_ALLOW_ORIGINS", "")
+if _extra:
+    _default_origins.extend(o.strip() for o in _extra.split(",") if o.strip())
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=_default_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
