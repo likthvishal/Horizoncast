@@ -11,7 +11,7 @@ It is designed like a production ML system: modular pipelines, cached artifacts,
 
 ---
 
-## Why this project stands out
+## Project highlights:
 
 - **Hybrid modeling**: fuses classical demand signals (lags/rolling/calendar/price) with LLM-derived semantic features (product + event embeddings).
 - **Uncertainty done right**: conformal prediction intervals via MAPIE with empirical coverage tracking, not just point forecasts.
@@ -51,7 +51,7 @@ It is designed like a production ML system: modular pipelines, cached artifacts,
 
 ---
 
-## What we solved: memory and robustness engineering
+## Solved: memory and robustness engineering
 
 This project originally hit multiple real-world failure points (OOM, dependency/API drift). The pipeline now includes targeted engineering fixes:
 
@@ -146,11 +146,3 @@ Core package: `horizoncast/`
 - `evaluation/`: metrics, business cost, ablation utilities
 - `dashboard/`: Streamlit app
 
----
-
-## Interview-ready discussion points
-
-- How to combine semantic context (LLM embeddings) with tabular time-series features.
-- How conformal prediction gives practical uncertainty guarantees in forecasting.
-- How to design ML systems for limited-memory environments without sacrificing extensibility.
-- How to evaluate models not just statistically, but with explicit business cost functions.
